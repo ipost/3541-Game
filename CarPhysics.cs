@@ -5,20 +5,25 @@ public class CarPhysics : MonoBehaviour {
 
 	float mass = 1.0f;
 	float thrustForce = 7.0f;
+	float brakeForce = 10.0f;
 	float dampingPerSec = 0.2f;
-	float hoverHeight = 3f;
-	float hoverForce = 2500.0f;
+	float hoverHeight = 0.5f;
+	float hoverForce = 10.0f;
 	float thrustSpeedCap = 50.0f;
 	float turnRate = 45f;
 	Vector3 velocity;
 
 	Vector3[,] courseTriangles;
 	Vector3[,] courseTrianglesGlobal;
-	GameObject course;
+	public GameObject course;
+	public SensorScript FLsensor;
+	public SensorScript FRsensor;
+	public SensorScript BLsensor;
+	public SensorScript BRsensor;
 
 	void Start () {
 		velocity = Vector3.zero;
-		course = GameObject.Find ("course");
+		//course = GameObject.Find ("course");
 		Mesh courseMesh = course.GetComponent<MeshFilter> ().mesh;
 		int[] meshTriangles = courseMesh.triangles;
 		courseTriangles = new Vector3[meshTriangles.Length / 3, 3];
@@ -38,7 +43,7 @@ public class CarPhysics : MonoBehaviour {
 		if (Input.GetKey ("w")) {
 			force += new Vector3(0,0,thrustForce);
 		} else if (Input.GetKey ("s")) {
-			force -= new Vector3(0,0,thrustForce);
+			force -= new Vector3(0,0,brakeForce);
 		}
 		return force;
 	}
@@ -88,25 +93,52 @@ public class CarPhysics : MonoBehaviour {
 		}
 		return new Vector3 (xavg, yavg, zavg);
 	}
-	
+
+	bool isAtGround() {
+		if (FLsensor.distance < hoverHeight && FRsensor.distance < hoverHeight 
+		    && BLsensor.distance < hoverHeight && BRsensor.distance < hoverHeight)
+						return true;
+
+		return false;
+	}
+
+	void applyHoverForce() {
+		float t = Time.deltaTime;
+		Vector3 back = transform.TransformDirection(Vector3.back);
+		if (FLsensor.distance < hoverHeight && FRsensor.distance < hoverHeight) {
+			float avgDist = (FLsensor.distance + FRsensor.distance) / 2;
+			transform.Rotate(Vector3.back * t * (hoverHeight - avgDist));
+			//force += new Vector3(velocity.x, hoverForce * (, velocity.z);
+		}
+	}
+
 	// Update is called once per frame
-	void Update () {
+	void FixedUpdate () {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
-		Vector3 carPosition = transform.TransformPoint(new Vector3(0,-hoverHeight,0));
+		//Vector3 carPosition = transform.TransformPoint(new Vector3(0,-hoverHeight,0));
+		//force += new Vector3(0, getHoverForce(carPosition), 0);
 		force += getUserForce ();
-		force += new Vector3(0, getHoverForce(carPosition), 0);
-
+		force += new Vector3 (0, -100, 0);
 		if (Input.GetKey ("d")) {
 			transform.Rotate(new Vector3(0,turnRate * t,0));
 		} else if (Input.GetKey ("a")) {
 			transform.Rotate(new Vector3(0,-turnRate * t,0));
 		}
 
+
+
+
 		velocity = new Vector3 (velocity.x, velocity.y * 0.1f, velocity.z);
 		velocity = velocity + t * (force / mass);
 		//velocity = velocity * (1.0f - (dampingPerSec * t));
+
+		if (isAtGround ()) {
+			velocity = new Vector3(velocity.x, 0.5f, velocity.z);
+		}
+
+		applyHoverForce ();
 		transform.Translate (t * velocity);
 	}
 }
