@@ -8,7 +8,7 @@ public class CarPhysics : MonoBehaviour {
 	float brakeForce = 10.0f;
 	float dampingPerSec = 0.2f;
 	float hoverHeight = 0.5f;
-	float hoverForce = 2500.0f;
+	float hoverForce = 10.0f;
 	float thrustSpeedCap = 50.0f;
 	float turnRate = 45f;
 	Vector3 velocity;
@@ -102,6 +102,16 @@ public class CarPhysics : MonoBehaviour {
 		return false;
 	}
 
+	void applyHoverForce() {
+		float t = Time.deltaTime;
+		Vector3 back = transform.TransformDirection(Vector3.back);
+		if (FLsensor.distance < hoverHeight && FRsensor.distance < hoverHeight) {
+			float avgDist = (FLsensor.distance + FRsensor.distance) / 2;
+			transform.Rotate(Vector3.back * t * (hoverHeight - avgDist));
+			//force += new Vector3(velocity.x, hoverForce * (, velocity.z);
+		}
+	}
+
 	// Update is called once per frame
 	void FixedUpdate () {
 		float t = Time.deltaTime;
@@ -123,9 +133,12 @@ public class CarPhysics : MonoBehaviour {
 		velocity = new Vector3 (velocity.x, velocity.y * 0.1f, velocity.z);
 		velocity = velocity + t * (force / mass);
 		//velocity = velocity * (1.0f - (dampingPerSec * t));
+
 		if (isAtGround ()) {
 			velocity = new Vector3(velocity.x, 0.5f, velocity.z);
 		}
+
+		applyHoverForce ();
 		transform.Translate (t * velocity);
 	}
 }

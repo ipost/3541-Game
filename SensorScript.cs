@@ -17,9 +17,13 @@ public class SensorScript : MonoBehaviour {
 		Ray myray = new Ray (transform.position, down);
 		RaycastHit hit;
 		if (track.Raycast (myray, out hit, Mathf.Infinity)) {
-			Debug.Log ("There is something underneath the object!");
+
 			isColliding = true;
 			distance = hit.distance;
+
+			if (distance < 1) {
+				Debug.Log ("There is something underneath the object!");
+			}
 		} else {
 			isColliding = false;
 			distance = 50000;
