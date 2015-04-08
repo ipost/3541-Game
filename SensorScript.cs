@@ -22,7 +22,7 @@ public class SensorScript : MonoBehaviour {
 			distance = hit.distance;
 
 			if (distance < 1) {
-				Debug.Log ("There is something underneath the object!");
+				//Debug.Log ("There is something underneath the object!");
 			}
 		} else {
 			isColliding = false;

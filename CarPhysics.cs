@@ -8,80 +8,38 @@ public class CarPhysics : MonoBehaviour {
 	float brakeForce = 10.0f;
 	float dampingPerSec = 0.2f;
 	float hoverHeight = 0.5f;
-	float hoverForce = 10.0f;
+	float hoverForce = 60000.0f;
 	float thrustSpeedCap = 50.0f;
 	float turnRate = 45f;
+	float dim;
 	Vector3 velocity;
 
+	Vector3[] sensors;
+	public Collider track;
 	Vector3[,] courseTriangles;
 	Vector3[,] courseTrianglesGlobal;
 	public GameObject course;
-	public SensorScript FLsensor;
-	public SensorScript FRsensor;
-	public SensorScript BLsensor;
-	public SensorScript BRsensor;
 
 	void Start () {
 		velocity = Vector3.zero;
-		//course = GameObject.Find ("course");
 		Mesh courseMesh = course.GetComponent<MeshFilter> ().mesh;
-		int[] meshTriangles = courseMesh.triangles;
-		courseTriangles = new Vector3[meshTriangles.Length / 3, 3];
-		courseTrianglesGlobal = new Vector3[meshTriangles.Length / 3, 3];
-		for (int i = 0; i < meshTriangles.Length / 3; i++) {
-			courseTriangles[i, 0] = courseMesh.vertices[meshTriangles[3*i]];
-			courseTriangles[i, 1] = courseMesh.vertices[meshTriangles[3*i + 1]];
-			courseTriangles[i, 2] = courseMesh.vertices[meshTriangles[3*i + 2]];
-			courseTrianglesGlobal[i, 0] = course.transform.TransformPoint(courseTriangles[i, 0]);
-			courseTrianglesGlobal[i, 1] = course.transform.TransformPoint(courseTriangles[i, 1]);
-			courseTrianglesGlobal[i, 2] = course.transform.TransformPoint(courseTriangles[i, 2]);
-		}
+		track = GameObject.Find ("course").GetComponent<Collider> ();
+		dim = 0.5f;
+		sensors = new Vector3[4];
+		sensors[0] = new Vector3(dim, -dim, dim);
+		sensors[1] = new Vector3(dim, -dim, -dim);
+		sensors[2] = new Vector3(-dim, -dim, dim);
+		sensors[3] = new Vector3(-dim, -dim, -dim);
 	}
 
 	Vector3 getUserForce () {
 		Vector3 force = Vector3.zero;
 		if (Input.GetKey ("w")) {
-			force += new Vector3(0,0,thrustForce);
+			force += new Vector3(thrustForce,0,0);
 		} else if (Input.GetKey ("s")) {
-			force -= new Vector3(0,0,brakeForce);
+			force -= new Vector3(brakeForce,0,0);
 		}
 		return force;
-	}
-
-	float getHoverForce(Vector3 carPosition) {
-		int tIndex = findNearestTriangle (carPosition);
-		Vector3 triangleNormal = getTriangleNormal (tIndex).normalized;
-		Vector3 projectedPoint = carPosition
-			- (Vector3.Dot((carPosition - courseTrianglesGlobal[tIndex,0]), triangleNormal)
-			   * triangleNormal);
-		float distanceFromTriangle = Vector3.Distance (projectedPoint, carPosition);
-		Plane p = new Plane (courseTrianglesGlobal[tIndex,0],courseTrianglesGlobal[tIndex,1],courseTrianglesGlobal[tIndex,2]);
-		float sign = 1.0f;
-		if (p.GetSide (carPosition)) {
-			sign = -1.0f;
-		}
-		return hoverForce * distanceFromTriangle * sign;
-	}
-
-	int findNearestTriangle(Vector3 position){
-		int closestTriangle = -1;
-		float closestTriangleDistance = float.MaxValue;
-		for (int i = 0; i < courseTriangles.GetLength(0); i++) {
-			Vector3 triangleCenter = vector3Average(
-				courseTrianglesGlobal[i,0],courseTrianglesGlobal[i,1],courseTrianglesGlobal[i,2]);
-			float distance = Vector3.Distance(position, triangleCenter);
-			if (distance < closestTriangleDistance) {
-				closestTriangle = i;
-				closestTriangleDistance = distance;
-			}
-		}
-		return closestTriangle;
-	}
-
-	Vector3 getTriangleNormal (int triangleIndex) {
-		return Vector3.Cross (
-			courseTrianglesGlobal[triangleIndex,1] - courseTrianglesGlobal[triangleIndex,0],
-			courseTrianglesGlobal[triangleIndex,2] - courseTrianglesGlobal[triangleIndex,0]);
 	}
 
 	Vector3 vector3Average (params Vector3[] vectors) {
@@ -94,51 +52,72 @@ public class CarPhysics : MonoBehaviour {
 		return new Vector3 (xavg, yavg, zavg);
 	}
 
-	bool isAtGround() {
-		if (FLsensor.distance < hoverHeight && FRsensor.distance < hoverHeight 
-		    && BLsensor.distance < hoverHeight && BRsensor.distance < hoverHeight)
-						return true;
-
-		return false;
-	}
-
-	void applyHoverForce() {
+	//		0   fp  1
+	//	^	
+	//	^	lp     rip
+	//  ^
+	//		2  rep  3
+	void applyHoverForce(){
 		float t = Time.deltaTime;
-		Vector3 back = transform.TransformDirection(Vector3.back);
-		if (FLsensor.distance < hoverHeight && FRsensor.distance < hoverHeight) {
-			float avgDist = (FLsensor.distance + FRsensor.distance) / 2;
-			transform.Rotate(Vector3.back * t * (hoverHeight - avgDist));
-			//force += new Vector3(velocity.x, hoverForce * (, velocity.z);
+		
+		Vector3 down = transform.TransformDirection(Vector3.down);
+		float[] sensorDistances = new float[4];
+		for (int i = 0; i < 4; i++) {
+			Ray myray = new Ray (transform.TransformPoint(sensors[i]), down);
+			RaycastHit hit;
+			if (track.Raycast (myray, out hit, Mathf.Infinity)) {
+				sensorDistances[i] = hit.distance;
+			}
 		}
-	}
 
-	// Update is called once per frame
-	void FixedUpdate () {
+		//TODO: DRY this up
+		Vector3 frontPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[1]));
+		float heightDiff = ((sensorDistances [2] + sensorDistances [3]) / 2.0f) - (hoverHeight);
+		float rotateAmount = t * hoverForce * heightDiff;
+		transform.RotateAround (frontPoint, transform.TransformDirection(sensors[0] - sensors[1]), rotateAmount);
+		
+		Vector3 rearPoint = transform.TransformPoint(vector3Average(sensors[2],sensors[3]));
+		heightDiff = ((sensorDistances [0] + sensorDistances [1]) / 2.0f) - (hoverHeight);
+		rotateAmount = t * hoverForce * heightDiff;
+		transform.RotateAround (rearPoint, transform.TransformDirection(sensors[3] - sensors[2]), rotateAmount);
+		
+		Vector3 leftPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[2]));
+		heightDiff = ((sensorDistances [1] + sensorDistances [3]) / 2.0f) - (hoverHeight);
+		rotateAmount = t * hoverForce * heightDiff;
+		transform.RotateAround (frontPoint, transform.TransformDirection(sensors[3] - sensors[1]), rotateAmount);
+		
+		Vector3 rightPoint = transform.TransformPoint(vector3Average(sensors[1],sensors[3]));
+		heightDiff = ((sensorDistances [0] + sensorDistances [2]) / 2.0f) - (hoverHeight);
+		rotateAmount = t * hoverForce * heightDiff;
+		transform.RotateAround (rearPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
+	}
+	
+	void Update () {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
-		//Vector3 carPosition = transform.TransformPoint(new Vector3(0,-hoverHeight,0));
-		//force += new Vector3(0, getHoverForce(carPosition), 0);
 		force += getUserForce ();
-		force += new Vector3 (0, -100, 0);
+		force += new Vector3 (0, -50, 0);
 		if (Input.GetKey ("d")) {
 			transform.Rotate(new Vector3(0,turnRate * t,0));
 		} else if (Input.GetKey ("a")) {
 			transform.Rotate(new Vector3(0,-turnRate * t,0));
 		}
-
-
-
-
+		
 		velocity = new Vector3 (velocity.x, velocity.y * 0.1f, velocity.z);
 		velocity = velocity + t * (force / mass);
 		//velocity = velocity * (1.0f - (dampingPerSec * t));
-
-		if (isAtGround ()) {
-			velocity = new Vector3(velocity.x, 0.5f, velocity.z);
-		}
-
-		applyHoverForce ();
+		
+		//		if (isAtGround ()) {
+		//			velocity = new Vector3(velocity.x, 0.5f, velocity.z);
+		//		}
+		
+		//		applyHoverForce ();
 		transform.Translate (t * velocity);
+
+		float start = Time.realtimeSinceStartup;
+		applyHoverForce ();
+		float stop = Time.realtimeSinceStartup;
+		Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
 	}
 }

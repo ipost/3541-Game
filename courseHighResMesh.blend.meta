@@ -1,13 +1,20 @@
 fileFormatVersion: 2
-guid: a42b8fc171a06734cba39309b68b54c7
+guid: 59292e2c7da7d174888795141cd2647c
 ModelImporter:
   serializedVersion: 16
   fileIDToRecycleName:
-    100000: //RootNode
-    400000: //RootNode
-    2300000: //RootNode
-    3300000: //RootNode
-    4300000: course
+    100000: course
+    100002: //RootNode
+    100004: cxsection
+    400000: course
+    400002: //RootNode
+    400004: cxsection
+    2300000: course
+    2300002: cxsection
+    3300000: course
+    3300002: cxsection
+    4300000: cxsection
+    4300002: course
     7400000: Default Take
     9500000: //RootNode
   materials:
