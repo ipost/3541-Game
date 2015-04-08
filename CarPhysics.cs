@@ -7,8 +7,8 @@ public class CarPhysics : MonoBehaviour {
 	float thrustForce = 7.0f;
 	float brakeForce = 10.0f;
 	float dampingPerSec = 0.2f;
-	float hoverHeight = 0.5f;
-	float hoverForce = 60000.0f;
+	float hoverHeight = 0.05f;
+	float hoverForce = 80000.0f;
 	float thrustSpeedCap = 50.0f;
 	float turnRate = 45f;
 	float dim;
@@ -65,7 +65,7 @@ public class CarPhysics : MonoBehaviour {
 		for (int i = 0; i < 4; i++) {
 			Ray myray = new Ray (transform.TransformPoint(sensors[i]), down);
 			RaycastHit hit;
-			if (track.Raycast (myray, out hit, Mathf.Infinity)) {
+			if (track.Raycast (myray, out hit, 3.0f)) {
 				sensorDistances[i] = hit.distance;
 			}
 		}
