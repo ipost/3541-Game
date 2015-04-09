@@ -22,7 +22,6 @@ public class CarPhysics : MonoBehaviour {
 
 	void Start () {
 		velocity = Vector3.zero;
-		Mesh courseMesh = course.GetComponent<MeshFilter> ().mesh;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
 		dim = 0.5f;
 		sensors = new Vector3[4];
@@ -118,6 +117,6 @@ public class CarPhysics : MonoBehaviour {
 		float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
 		float stop = Time.realtimeSinceStartup;
-		Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
+		//Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
 	}
 }
