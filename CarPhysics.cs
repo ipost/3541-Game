@@ -16,9 +16,10 @@ public class CarPhysics : MonoBehaviour {
 
 	Vector3[] sensors;
 	public Collider track;
-	Vector3[,] courseTriangles;
-	Vector3[,] courseTrianglesGlobal;
 	public GameObject course;
+	Transform[] checkpoints;
+	int lastCheckpoint;
+	int lap;
 
 	void Start () {
 		velocity = Vector3.zero;
@@ -29,6 +30,37 @@ public class CarPhysics : MonoBehaviour {
 		sensors[1] = new Vector3(dim, -dim, -dim);
 		sensors[2] = new Vector3(-dim, -dim, dim);
 		sensors[3] = new Vector3(-dim, -dim, -dim);
+		lap = 1;
+		Debug.Log ("Lap " + lap);
+		lastCheckpoint = -1;
+		Transform courseTrans = GameObject.Find ("course").transform;
+		foreach (Transform child in courseTrans) {
+			if (child.gameObject.name == "checkpoint list") {
+				Transform checkpointParent = child;
+				int children = checkpointParent.childCount;
+				checkpoints = new Transform[children];
+				for (int i = 0; i < children; i++) {
+					checkpoints[i] = checkpointParent.GetChild(i);
+				}
+			}
+		}
+	}
+
+	void OnTriggerEnter(Collider col) {
+		if (col.gameObject.name == "checkpoint") {
+			for (int i = 0; i < checkpoints.Length; i++) {
+				if (checkpoints[i] == col.gameObject.transform) {
+					Debug.Log ("Hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
+					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
+						lastCheckpoint = i;
+					}
+					if (i == checkpoints.Length - 1) {
+						lap++;
+						Debug.Log ("Lap " + lap);
+					}
+				}
+			}
+		}
 	}
 
 	Vector3 getUserForce () {
