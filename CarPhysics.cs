@@ -1,19 +1,31 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 public class CarPhysics : MonoBehaviour {
 
 	float mass = 1.0f;
-	float thrustForce = 7.0f;
-	float brakeForce = 10.0f;
+	float thrustForce = 450.0f;
+	float brakeForce = 1250.0f;
 	float dampingPerSec = 0.2f;
 	float hoverHeight = 0.05f;
 	float hoverForce = 80000.0f;
-	float thrustSpeedCap = 50.0f;
+	float thrustSpeedCap = 1200.0f;
+	float brakeSpeedCap = -75.0f;
 	float turnRate = 45f;
+	float boostDuration = 1.5f;
+	float boostForce = 300f;
+	float remainingBoostDuration = 0.0f;
+
 	float dim;
+	float velocityMagnificationFactor = 0.02f;
+	float thrusterLifeTime = 0.04f;
+	float thrusterBaseLifeTime = 0.01f;
+	float thrusterParticleSize = 0.004f;
+	float thrusterBoostParticleSize = 0.008f;
 	Vector3 velocity;
 
+	ParticleSystem[] thrusters;
 	Vector3[] sensors;
 	public Collider track;
 	public GameObject course;
@@ -21,17 +33,24 @@ public class CarPhysics : MonoBehaviour {
 	int lastCheckpoint;
 	int lap;
 
+	Text lapDisplay;
+	Text speedometer;
+
 	void Start () {
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
+
 		dim = 0.5f;
 		sensors = new Vector3[4];
 		sensors[0] = new Vector3(dim, -dim, dim);
 		sensors[1] = new Vector3(dim, -dim, -dim);
 		sensors[2] = new Vector3(-dim, -dim, dim);
 		sensors[3] = new Vector3(-dim, -dim, -dim);
+
 		lap = 1;
 		Debug.Log ("Lap " + lap);
+		lapDisplay = GameObject.Find ("LapDisplay").GetComponent<Text>();
+		setLapDisplay ();
 		lastCheckpoint = -1;
 		Transform courseTrans = GameObject.Find ("course").transform;
 		foreach (Transform child in courseTrans) {
@@ -42,6 +61,31 @@ public class CarPhysics : MonoBehaviour {
 				for (int i = 0; i < children; i++) {
 					checkpoints[i] = checkpointParent.GetChild(i);
 				}
+			}
+		}
+
+		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
+
+		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
+	}
+
+	void setLapDisplay() {
+		lapDisplay.text = "Lap " + lap + " / 3";
+	}
+
+	void setSpeedometer() {
+		speedometer.text = ((int) velocity.x) + " KM/h";
+	}
+
+	void updateThrusters() {
+		foreach (ParticleSystem ps in thrusters) {
+			ps.startLifetime = thrusterBaseLifeTime;
+			if (Input.GetKey("w")) {
+				ps.startLifetime += thrusterLifeTime * (velocity.x / thrustSpeedCap);
+			}
+			if (remainingBoostDuration > 0f) {
+				ps.startSize = thrusterParticleSize + thrusterBoostParticleSize
+					* (Mathf.Pow(remainingBoostDuration / boostDuration, 2));
 			}
 		}
 	}
@@ -56,6 +100,7 @@ public class CarPhysics : MonoBehaviour {
 					}
 					if (i == checkpoints.Length - 1) {
 						lap++;
+						setLapDisplay();
 						Debug.Log ("Lap " + lap);
 					}
 				}
@@ -66,9 +111,13 @@ public class CarPhysics : MonoBehaviour {
 	Vector3 getUserForce () {
 		Vector3 force = Vector3.zero;
 		if (Input.GetKey ("w")) {
-			force += new Vector3(thrustForce,0,0);
-		} else if (Input.GetKey ("s")) {
+			float proportionOfMax = (thrustSpeedCap - velocity.x) / thrustSpeedCap;
+			float appliedThrust = thrustForce * proportionOfMax;
+			force += new Vector3(appliedThrust,0,0);
+		} else if (Input.GetKey ("s") && velocity.x > brakeSpeedCap) {
 			force -= new Vector3(brakeForce,0,0);
+		} else if (velocity.x > 0){
+			force -= new Vector3(thrustForce * .4f,0,0);
 		}
 		return force;
 	}
@@ -96,8 +145,10 @@ public class CarPhysics : MonoBehaviour {
 		for (int i = 0; i < 4; i++) {
 			Ray myray = new Ray (transform.TransformPoint(sensors[i]), down);
 			RaycastHit hit;
-			if (track.Raycast (myray, out hit, 3.0f)) {
+			if (track.Raycast (myray, out hit, 1f)) {
 				sensorDistances[i] = hit.distance;
+			} else {
+				sensorDistances[i] = hoverHeight;
 			}
 		}
 
@@ -115,12 +166,12 @@ public class CarPhysics : MonoBehaviour {
 		Vector3 leftPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[2]));
 		heightDiff = ((sensorDistances [1] + sensorDistances [3]) / 2.0f) - (hoverHeight);
 		rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (frontPoint, transform.TransformDirection(sensors[3] - sensors[1]), rotateAmount);
+		transform.RotateAround (leftPoint, transform.TransformDirection(sensors[3] - sensors[1]), rotateAmount);
 		
 		Vector3 rightPoint = transform.TransformPoint(vector3Average(sensors[1],sensors[3]));
 		heightDiff = ((sensorDistances [0] + sensorDistances [2]) / 2.0f) - (hoverHeight);
 		rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (rearPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
+		transform.RotateAround (rightPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
 	}
 	
 	void Update () {
@@ -128,27 +179,26 @@ public class CarPhysics : MonoBehaviour {
 
 		Vector3 force = Vector3.zero;
 		force += getUserForce ();
-		force += new Vector3 (0, -50, 0);
 		if (Input.GetKey ("d")) {
 			transform.Rotate(new Vector3(0,turnRate * t,0));
 		} else if (Input.GetKey ("a")) {
 			transform.Rotate(new Vector3(0,-turnRate * t,0));
 		}
-		
-		velocity = new Vector3 (velocity.x, velocity.y * 0.1f, velocity.z);
-		velocity = velocity + t * (force / mass);
-		//velocity = velocity * (1.0f - (dampingPerSec * t));
-		
-		//		if (isAtGround ()) {
-		//			velocity = new Vector3(velocity.x, 0.5f, velocity.z);
-		//		}
-		
-		//		applyHoverForce ();
-		transform.Translate (t * velocity);
 
-		float start = Time.realtimeSinceStartup;
+		if (remainingBoostDuration > 0f) {
+			force += new Vector3(boostForce,0,0);
+			remainingBoostDuration -= Time.deltaTime;
+		} else if (Input.GetKeyDown ("space")) {
+			remainingBoostDuration = boostDuration;
+		}
+
+		velocity += t * (force / mass);
+		updateThrusters ();
+		setSpeedometer ();
+		transform.Translate (t * velocityMagnificationFactor * velocity);
+		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
-		float stop = Time.realtimeSinceStartup;
+		//float stop = Time.realtimeSinceStartup;
 		//Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
 	}
 }

@@ -1,23 +1,20 @@
 fileFormatVersion: 2
-guid: c2c837a2f0c0ce843a83a849629ff7ca
+guid: 4e11c145f524e9148909ae5b130d09e3
 ModelImporter:
   serializedVersion: 16
   fileIDToRecycleName:
     100000: //RootNode
-    100002: course
-    100004: walls
+    100002: Plane
+    100004: SpaceShip
     400000: //RootNode
-    400002: course
-    400004: walls
-    2300000: //RootNode
-    2300002: course
-    2300004: walls
-    3300000: //RootNode
-    3300002: course
-    3300004: walls
-    4300000: Figure8walls
-    4300002: walls
-    4300004: course
+    400002: Plane
+    400004: SpaceShip
+    2300000: Plane
+    2300002: SpaceShip
+    3300000: Plane
+    3300002: SpaceShip
+    4300000: Plane
+    4300002: SpaceShip
     7400000: Default Take
     9500000: //RootNode
   materials:

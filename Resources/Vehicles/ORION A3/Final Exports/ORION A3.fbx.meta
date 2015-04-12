@@ -1,24 +1,13 @@
 fileFormatVersion: 2
-guid: c2c837a2f0c0ce843a83a849629ff7ca
+guid: a20ebc4e44c004b48bf5a679da9f748a
 ModelImporter:
   serializedVersion: 16
   fileIDToRecycleName:
     100000: //RootNode
-    100002: course
-    100004: walls
     400000: //RootNode
-    400002: course
-    400004: walls
     2300000: //RootNode
-    2300002: course
-    2300004: walls
     3300000: //RootNode
-    3300002: course
-    3300004: walls
-    4300000: Figure8walls
-    4300002: walls
-    4300004: course
-    7400000: Default Take
+    4300000: SpaceShip
     9500000: //RootNode
   materials:
     importMaterials: 1
@@ -39,7 +28,7 @@ ModelImporter:
     isReadable: 1
   meshes:
     lODScreenPercentages: []
-    globalScale: 1
+    globalScale: .00999999978
     meshCompression: 0
     addColliders: 0
     importBlendShapes: 1
