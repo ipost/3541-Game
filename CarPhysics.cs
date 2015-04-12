@@ -6,7 +6,7 @@ public class CarPhysics : MonoBehaviour {
 
 	float mass = 1.0f;
 	float thrustForce = 450.0f;
-	float brakeForce = 550.0f;
+	float brakeForce = 1250.0f;
 	float dampingPerSec = 0.2f;
 	float hoverHeight = 0.05f;
 	float hoverForce = 80000.0f;
