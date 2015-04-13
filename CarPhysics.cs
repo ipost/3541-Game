@@ -9,7 +9,7 @@ public class CarPhysics : MonoBehaviour {
 	float brakeForce = 1250.0f;
 	float dampingPerSec = 0.2f;
 	float hoverHeight = 0.05f;
-	float hoverForce = 80000.0f;
+	float hoverForce = 40000.0f;
 	float thrustSpeedCap = 1200.0f;
 	float brakeSpeedCap = -75.0f;
 	float turnRate = 45f;
@@ -125,6 +125,8 @@ public class CarPhysics : MonoBehaviour {
 			force -= new Vector3(brakeForce,0,0);
 		} else if (velocity.x > 0){
 			force -= new Vector3(thrustForce * .4f,0,0);
+		} else {
+			force += new Vector3(thrustForce * .2f,0,0);
 		}
 		return force;
 	}
@@ -179,6 +181,7 @@ public class CarPhysics : MonoBehaviour {
 		heightDiff = ((sensorDistances [0] + sensorDistances [2]) / 2.0f) - (hoverHeight);
 		rotateAmount = t * hoverForce * heightDiff;
 		transform.RotateAround (rightPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
+		
 	}
 	
 	void Update () {
