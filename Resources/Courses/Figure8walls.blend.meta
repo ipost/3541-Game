@@ -18,6 +18,8 @@ ModelImporter:
     4300000: Figure8walls
     4300002: walls
     4300004: course
+    4300006: Figure8floor
+    4300008: FIgure8walls
     7400000: Default Take
     9500000: //RootNode
   materials:
