@@ -23,6 +23,7 @@ public class CarPhysics : MonoBehaviour {
 	float thrusterBaseLifeTime = 0.01f;
 	float thrusterParticleSize = 0.004f;
 	float thrusterBoostParticleSize = 0.008f;
+	float boostLifeTimeAddition = 0.03f;
 	Vector3 velocity;
 
 	ParticleSystem[] thrusters;
@@ -84,8 +85,10 @@ public class CarPhysics : MonoBehaviour {
 				ps.startLifetime += thrusterLifeTime * (velocity.x / thrustSpeedCap);
 			}
 			if (remainingBoostDuration > 0f) {
-				ps.startSize = thrusterParticleSize + thrusterBoostParticleSize
-					* (Mathf.Pow(remainingBoostDuration / boostDuration, 2));
+				float effectFactor = Mathf.Pow(remainingBoostDuration / boostDuration, 2);
+				ps.startLifetime += effectFactor * boostLifeTimeAddition;
+				ps.startSize = thrusterParticleSize + thrusterBoostParticleSize * effectFactor;
+
 			}
 		}
 	}
