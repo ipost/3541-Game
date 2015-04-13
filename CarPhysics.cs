@@ -38,6 +38,10 @@ public class CarPhysics : MonoBehaviour {
 	Text speedometer;
 
 	void Start () {
+		Transform spawn = TrackScript.getSpawn ();
+		transform.position = spawn.position;
+		transform.rotation = spawn.rotation;
+
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
 
