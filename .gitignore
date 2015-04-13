@@ -1,0 +1,13 @@
+*.blend1
+*.blend1.meta
+
+Temp/
+Library/
+
+ExportedObj/
+obj/
+*.svd
+*.sln
+*.userprefs
+*.csproj
+BlenderAssets/
