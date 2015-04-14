@@ -29,6 +29,7 @@ public class CarPhysics : MonoBehaviour {
 	float maxRollAngle = 55f;
 
 	Vector3 velocity;
+
 	Transform vehicleModel;
 	ParticleSystem[] thrusters;
 	Vector3[] sensors;
@@ -193,7 +194,7 @@ public class CarPhysics : MonoBehaviour {
 	void handleTurns() {
 		float t = Time.deltaTime;
 		float rollAmount = t * rollRateModifier;
-		float zRot = vehicleModel.eulerAngles.z;
+		float zRot = vehicleModel.localEulerAngles.z;
 		if (Input.GetKey ("d")) {
 			rollAmount *= (zRot >= 180f) ? -(zRot - (360f - maxRollAngle)) : -(zRot + maxRollAngle);
 			transform.Rotate(new Vector3(0,turnRate * t,0));
