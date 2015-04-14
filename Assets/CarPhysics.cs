@@ -28,6 +28,12 @@ public class CarPhysics : MonoBehaviour {
 	float rollRateModifier = 2.5f;
 	float maxRollAngle = 55f;
 
+	float fovDefault = 60f;
+	float fovMax = 85f;
+	float fovVariance;
+	float fovSpeedThreshold = 200f;
+	float fovSpeedMax = 1600f;
+
 	Vector3 velocity;
 
 	Transform vehicleModel;
@@ -79,6 +85,7 @@ public class CarPhysics : MonoBehaviour {
 		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
 
 		vehicleModel = transform.FindChild ("VehicleModel").transform;
+		fovVariance = fovMax - fovDefault;
 	}
 
 	void setLapDisplay() {
@@ -207,11 +214,19 @@ public class CarPhysics : MonoBehaviour {
 		vehicleModel.Rotate(new Vector3(0,0,rollAmount));
 	}
 
+	void applyFoVSpeedEffect(){
+		if (velocity.x > fovSpeedThreshold) {
+			float v = velocity.x > fovSpeedMax ? fovSpeedMax : velocity.x;
+			Camera.main.fieldOfView = fovDefault
+				+ (fovVariance* Mathf.Pow((v - fovSpeedThreshold) / (fovSpeedMax - fovSpeedThreshold), 2));
+		}
+	}
+
 	void Update () {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
-		force += new Vector3 (0,-3,0);
+		//force += new Vector3 (0,-3,0);
 		force += getUserForce ();
 		handleTurns ();
 
@@ -223,11 +238,13 @@ public class CarPhysics : MonoBehaviour {
 		}
 
 		velocity += t * (force / mass);
+
 		updateThrusters ();
 		setSpeedometer ();
 		transform.Translate (t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
+		applyFoVSpeedEffect();
 		//float stop = Time.realtimeSinceStartup;
 		//Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
 	}
