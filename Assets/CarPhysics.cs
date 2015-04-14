@@ -24,8 +24,12 @@ public class CarPhysics : MonoBehaviour {
 	float thrusterParticleSize = 0.004f;
 	float thrusterBoostParticleSize = 0.008f;
 	float boostLifeTimeAddition = 0.03f;
-	Vector3 velocity;
 
+	float rollRateModifier = 2.5f;
+	float maxRollAngle = 55f;
+
+	Vector3 velocity;
+	Transform vehicleModel;
 	ParticleSystem[] thrusters;
 	Vector3[] sensors;
 	public Collider track;
@@ -72,6 +76,8 @@ public class CarPhysics : MonoBehaviour {
 		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
 
 		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
+
+		vehicleModel = transform.FindChild ("VehicleModel").transform;
 	}
 
 	void setLapDisplay() {
@@ -154,7 +160,7 @@ public class CarPhysics : MonoBehaviour {
 		for (int i = 0; i < 4; i++) {
 			Ray myray = new Ray (transform.TransformPoint(sensors[i]), down);
 			RaycastHit hit;
-			if (track.Raycast (myray, out hit, 1f)) {
+			if (track.Raycast (myray, out hit, 10f * hoverHeight)) {
 				sensorDistances[i] = hit.distance;
 			} else {
 				sensorDistances[i] = hoverHeight;
@@ -183,17 +189,30 @@ public class CarPhysics : MonoBehaviour {
 		transform.RotateAround (rightPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
 		
 	}
-	
+
+	void handleTurns() {
+		float t = Time.deltaTime;
+		float rollAmount = t * rollRateModifier;
+		float zRot = vehicleModel.eulerAngles.z;
+		if (Input.GetKey ("d")) {
+			rollAmount *= (zRot >= 180f) ? -(zRot - (360f - maxRollAngle)) : -(zRot + maxRollAngle);
+			transform.Rotate(new Vector3(0,turnRate * t,0));
+		} else if (Input.GetKey ("a")) {
+			rollAmount *= (zRot >= 180f) ? ((maxRollAngle + 360f) - zRot) : (maxRollAngle - zRot);
+			transform.Rotate(new Vector3(0,-turnRate * t,0));
+		} else {
+			rollAmount *= (zRot >= 180f) ? (360f - zRot) : (0f - zRot);
+		}
+		vehicleModel.Rotate(new Vector3(0,0,rollAmount));
+	}
+
 	void Update () {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
+		force += new Vector3 (0,-3,0);
 		force += getUserForce ();
-		if (Input.GetKey ("d")) {
-			transform.Rotate(new Vector3(0,turnRate * t,0));
-		} else if (Input.GetKey ("a")) {
-			transform.Rotate(new Vector3(0,-turnRate * t,0));
-		}
+		handleTurns ();
 
 		if (remainingBoostDuration > 0f) {
 			force += new Vector3(boostForce,0,0);
