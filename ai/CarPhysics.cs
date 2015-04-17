@@ -30,6 +30,7 @@ public class CarPhysics : MonoBehaviour {
 	Vector3[] sensors;
 	public Collider track;
 	public GameObject course;
+	public bool isAI;
 	Transform[] checkpoints;
 	int lastCheckpoint;
 	int lap;
@@ -41,6 +42,7 @@ public class CarPhysics : MonoBehaviour {
 		Transform spawn = TrackScript.getSpawn ();
 		transform.position = spawn.position;
 		transform.rotation = spawn.rotation;
+		Debug.Log ("Spawned at: " + spawn.position + " --- " + isAI);
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
@@ -53,7 +55,7 @@ public class CarPhysics : MonoBehaviour {
 		sensors[3] = new Vector3(-dim, -dim, -dim);
 
 		lap = 1;
-		Debug.Log ("Lap " + lap);
+		//Debug.Log ("Lap " + lap);
 		lapDisplay = GameObject.Find ("LapDisplay").GetComponent<Text>();
 		setLapDisplay ();
 		lastCheckpoint = -1;
@@ -101,14 +103,20 @@ public class CarPhysics : MonoBehaviour {
 		if (col.gameObject.name == "checkpoint") {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
-					Debug.Log ("Hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
+					if (isAI) {
+						Debug.Log ("AI hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
+						Vector3 direction = (checkpoints[i + 1].position - transform.position).normalized;
+						Quaternion rotation = Quaternion.LookRotation(direction);
+						Debug.Log ("Next checkpoint: " + checkpoints[i + 1].gameObject.name);
+						Debug.Log (rotation);
+					}
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
 						lastCheckpoint = i;
-					}
-					if (i == checkpoints.Length - 1) {
-						lap++;
-						setLapDisplay();
-						Debug.Log ("Lap " + lap);
+						if (i == checkpoints.Length - 1) {
+							lap++;
+							setLapDisplay();
+							//Debug.Log ("Lap " + lap);
+						}
 					}
 				}
 			}
@@ -188,23 +196,32 @@ public class CarPhysics : MonoBehaviour {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
-		force += getUserForce ();
-		if (Input.GetKey ("d")) {
-			transform.Rotate(new Vector3(0,turnRate * t,0));
-		} else if (Input.GetKey ("a")) {
-			transform.Rotate(new Vector3(0,-turnRate * t,0));
+		if (isAI) {
+			int nextCheckpoint = (lastCheckpoint + 1) % checkpoints.Length;
+			Transform checkpoint = checkpoints[nextCheckpoint];
+			transform.position = Vector3.MoveTowards (transform.position, checkpoint.position, t);
+			force += new Vector3(thrustForce * .01f,0,0);
+		} else {
+			force += getUserForce ();
+			if (Input.GetKey ("d")) {
+				transform.Rotate(new Vector3(0,turnRate * t,0));
+			} else if (Input.GetKey ("a")) {
+				transform.Rotate(new Vector3(0,-turnRate * t,0));
+			}
 		}
-
+		
 		if (remainingBoostDuration > 0f) {
 			force += new Vector3(boostForce,0,0);
 			remainingBoostDuration -= Time.deltaTime;
-		} else if (Input.GetKeyDown ("space")) {
+		} else if (Input.GetKeyDown ("space") && !isAI) {
 			remainingBoostDuration = boostDuration;
 		}
 
 		velocity += t * (force / mass);
-		updateThrusters ();
-		setSpeedometer ();
+		if (!isAI) {
+			updateThrusters ();
+			setSpeedometer ();
+		}
 		transform.Translate (t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();

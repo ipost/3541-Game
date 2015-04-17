@@ -13,6 +13,7 @@ public class TrackScript : MonoBehaviour {
 		string courseName = courseNames [selection].Replace (" ", "");
 
 		Application.LoadLevelAdditive ("playerVehicle");
+		Application.LoadLevelAdditive ("aiVehicle");
 		Application.LoadLevelAdditive ("HUD");
 
 		//queue up spawns for the vehicles to fetch
