@@ -17,7 +17,7 @@ public class CarPhysics : MonoBehaviour {
 	float boostDuration = 1.5f;
 	float boostForce = 300f;
 	float remainingBoostDuration = 0.0f;
-	float maxAccel = 5.0f;
+	float maxAccel = 10.0f;
 
 	float dim;
 	float velocityMagnificationFactor = 0.02f;
@@ -126,21 +126,25 @@ public class CarPhysics : MonoBehaviour {
 		return checkpoints [next];
 	}
 
-	float getAIRotation () {
-		Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
-		Quaternion rotation = Quaternion.LookRotation(direction);
-		return rotation.w;
-	}
-
 	void OnTriggerEnter(Collider col) {
-		if (col.gameObject.name == "checkpoint") {
+		if (col.gameObject.name.Equals ("checkpoint")) {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
 						lastCheckpoint = i;
 						nextCheckpoint = getNextCheckpoint (i);
+						if (isAI) {
+							Debug.Log ("AI hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
+						} else {
+							Debug.Log ("You hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
+						}
 						if (i == checkpoints.Length - 1) {
 							lap++;
+							if (isAI) {
+								Debug.Log ("AI finished a lap");
+							} else {
+								Debug.Log ("You finished a lap");
+							}
 							setLapDisplay();
 						}
 					}
@@ -249,9 +253,10 @@ public class CarPhysics : MonoBehaviour {
 		//force += new Vector3 (0,-3,0);
 		if (isAI) {
 			Vector3 target = Vector3.MoveTowards (transform.position, nextCheckpoint.position, accel * t);
-			Vector3 diff = (target - transform.position).normalized;
 			transform.position = target;
-//			transform.Rotate(0, -diff.z * accel * 0.065f, 0);
+			Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
+			Quaternion rotation = Quaternion.LookRotation (direction);
+			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, t);
 			if (accel < maxAccel) {
 				accel += 0.01f;
 			}
