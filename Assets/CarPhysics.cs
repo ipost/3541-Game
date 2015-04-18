@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System;
 
 public class CarPhysics : MonoBehaviour {
 
@@ -16,6 +17,7 @@ public class CarPhysics : MonoBehaviour {
 	float boostDuration = 1.5f;
 	float boostForce = 300f;
 	float remainingBoostDuration = 0.0f;
+	float maxAccel = 5.0f;
 
 	float dim;
 	float velocityMagnificationFactor = 0.02f;
@@ -43,8 +45,10 @@ public class CarPhysics : MonoBehaviour {
 	public GameObject course;
 	public bool isAI;
 	Transform[] checkpoints;
+	Transform nextCheckpoint;
 	int lastCheckpoint;
 	int lap;
+	float accel;
 
 	Text lapDisplay;
 	Text speedometer;
@@ -80,6 +84,8 @@ public class CarPhysics : MonoBehaviour {
 				}
 			}
 		}
+		nextCheckpoint = checkpoints [0];
+		accel = 1.0f;
 
 		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
 
@@ -112,24 +118,30 @@ public class CarPhysics : MonoBehaviour {
 		}
 	}
 
+	Transform getNextCheckpoint (int i) {
+		int next = i + 1;
+		if (next == checkpoints.Length) {
+			next = 0;
+		}
+		return checkpoints [next];
+	}
+
+	float getAIRotation () {
+		Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
+		Quaternion rotation = Quaternion.LookRotation(direction);
+		return rotation.w;
+	}
+
 	void OnTriggerEnter(Collider col) {
 		if (col.gameObject.name == "checkpoint") {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
-					if (isAI) {
-						Debug.Log ("AI hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
-						Vector3 direction = (checkpoints[i + 1].position - transform.position).normalized;
-						Quaternion rotation = Quaternion.LookRotation(direction);
-						//Debug.Log ("Next checkpoint: " + checkpoints[i + 1].gameObject.name);
-						//Debug.Log (rotation);
-					}
-					//Debug.Log ("Hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
 						lastCheckpoint = i;
+						nextCheckpoint = getNextCheckpoint (i);
 						if (i == checkpoints.Length - 1) {
 							lap++;
 							setLapDisplay();
-							//Debug.Log ("Lap " + lap);
 						}
 					}
 				}
@@ -236,10 +248,13 @@ public class CarPhysics : MonoBehaviour {
 		Vector3 force = Vector3.zero;
 		//force += new Vector3 (0,-3,0);
 		if (isAI) {
-			int nextCheckpoint = (lastCheckpoint + 1) % checkpoints.Length;
-			Transform checkpoint = checkpoints[nextCheckpoint];
-			transform.position = Vector3.MoveTowards (transform.position, checkpoint.position, t);
-			force += new Vector3(thrustForce * .05f,0,0);
+			Vector3 target = Vector3.MoveTowards (transform.position, nextCheckpoint.position, accel * t);
+			Vector3 diff = (target - transform.position).normalized;
+			transform.position = target;
+//			transform.Rotate(0, -diff.z * accel * 0.065f, 0);
+			if (accel < maxAccel) {
+				accel += 0.01f;
+			}
 		} else {
 			force += getUserForce ();
 			handleTurns ();
@@ -251,9 +266,9 @@ public class CarPhysics : MonoBehaviour {
 		} else if (Input.GetKeyDown ("space")) {
 			remainingBoostDuration = boostDuration;
 		}
-
-		velocity += t * (force / mass);
 		
+		velocity += t * (force / mass);
+
 		if (!isAI) {
 			updateThrusters ();
 			setSpeedometer ();
