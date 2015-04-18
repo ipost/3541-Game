@@ -36,14 +36,12 @@ public class CarPhysics : MonoBehaviour {
 	float fovSpeedThreshold = 200f;
 	float fovSpeedMax = 1600f;
 
-	Vector3 velocity;
+	public Vector3 velocity;
 
 	Transform vehicleModel;
 	ParticleSystem[] thrusters;
 	Vector3[] sensors;
-	public Collider track;
-	public GameObject course;
-	public bool isAI;
+
 	Transform[] checkpoints;
 	Transform nextCheckpoint;
 	int lastCheckpoint;
@@ -53,6 +51,15 @@ public class CarPhysics : MonoBehaviour {
 	Text lapDisplay;
 	Text speedometer;
 
+	public Collider track;
+	public GameObject course;
+	public bool isAI;
+	//Rename this once everything's fixed
+	public GameObject FLSensor;
+	//public FLSensorScript BLSensor;
+	public GameObject FRSensor;
+	//public FRSensorScript BRSensor;
+
 	void Start () {
 		Transform spawn = TrackScript.getSpawn ();
 		transform.position = spawn.position;
@@ -60,7 +67,7 @@ public class CarPhysics : MonoBehaviour {
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
-
+		
 		dim = 0.5f;
 		sensors = new Vector3[4];
 		sensors[0] = new Vector3(dim, -dim, dim);
@@ -222,6 +229,23 @@ public class CarPhysics : MonoBehaviour {
 		
 	}
 
+	bool isTouchingRightWall() {
+		float right = FRSensor.GetComponent<FRSensorScript> ().rightDist;
+		return  right < 0.03;
+		//return 0.06 < 0.02;
+	}
+
+	//It might be a better idea to have the sensors as GameObjects, they all do different things now
+	bool isTouchingLeftWall() {
+		//TODO: make variable for this
+		//return FLSensor.leftDist < 0.02;
+
+		float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
+		return left < 0.03;
+	}
+
+
+
 	void handleTurns() {
 		float t = Time.deltaTime;
 		float rollAmount = t * rollRateModifier;
@@ -243,6 +267,24 @@ public class CarPhysics : MonoBehaviour {
 			float v = velocity.x > fovSpeedMax ? fovSpeedMax : velocity.x;
 			Camera.main.fieldOfView = fovDefault
 				+ (fovVariance* Mathf.Pow((v - fovSpeedThreshold) / (fovSpeedMax - fovSpeedThreshold), 2));
+		}
+	}
+
+	void handleWallCollisions() {
+		float t = Time.deltaTime;
+		if (isTouchingLeftWall()) {
+			float rollAmount = t * rollRateModifier;
+
+			float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
+			transform.Rotate(new Vector3(0,rollAmount * (1/ left),0));
+			
+			//vehicleModel.Rotate(new Vector3(0,0,rollAmount));
+		}
+
+		if (isTouchingRightWall()) {
+			float rollAmount = t * rollRateModifier;
+			float right = FRSensor.GetComponent<FRSensorScript>().rightDist;
+			transform.Rotate(new Vector3(0,-1 * rollAmount * (1/ right),0));
 		}
 	}
 
@@ -271,8 +313,14 @@ public class CarPhysics : MonoBehaviour {
 		} else if (Input.GetKeyDown ("space")) {
 			remainingBoostDuration = boostDuration;
 		}
-		
+
+		//Gravity needs to be applied if it's not touching the ground
+		//velocity += new Vector3 (0, -9.8f * t, 0);
+
 		velocity += t * (force / mass);
+
+		handleWallCollisions ();
+
 
 		if (!isAI) {
 			updateThrusters ();
@@ -284,5 +332,7 @@ public class CarPhysics : MonoBehaviour {
 		applyFoVSpeedEffect();
 		//float stop = Time.realtimeSinceStartup;
 		//Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
+
+
 	}
 }
