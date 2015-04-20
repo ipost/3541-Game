@@ -51,6 +51,7 @@ public class CarPhysics : MonoBehaviour {
 	Text lapDisplay;
 	Text speedometer;
 
+	public bool inAir;
 	public Collider track;
 	public GameObject course;
 	public bool isAI;
@@ -67,7 +68,10 @@ public class CarPhysics : MonoBehaviour {
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
-		
+		FLSensor = GameObject.Find ("FLSensor");
+		FRSensor = GameObject.Find ("FRSensor");
+
+		inAir = false;
 		dim = 0.5f;
 		sensors = new Vector3[4];
 		sensors[0] = new Vector3(dim, -dim, dim);
@@ -98,7 +102,7 @@ public class CarPhysics : MonoBehaviour {
 
 		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
 
-		vehicleModel = transform.FindChild ("VehicleModel").transform;
+		vehicleModel = GameObject.Find ("VehicleModel").transform;
 		fovVariance = fovMax - fovDefault;
 	}
 
@@ -168,11 +172,11 @@ public class CarPhysics : MonoBehaviour {
 			force += new Vector3(appliedThrust,0,0);
 		} else if (Input.GetKey ("s") && velocity.x > brakeSpeedCap) {
 			force -= new Vector3(brakeForce,0,0);
-		} else if (velocity.x > 0){
+		} /*else if (velocity.x > 0){
 			force -= new Vector3(thrustForce * .4f,0,0);
 		} else {
 			force += new Vector3(thrustForce * .2f,0,0);
-		}
+		}*/
 		return force;
 	}
 
@@ -241,11 +245,16 @@ public class CarPhysics : MonoBehaviour {
 		//return FLSensor.leftDist < 0.02;
 
 		float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
+		//float front = FLSensor.GetComponent<FLSensorScript> ().frontDist;
 		return left < 0.03;
 	}
 
-
-
+	void updateGround() {
+		float FL = FLSensor.GetComponent<FLSensorScript>().downDist;
+		float FR = FRSensor.GetComponent<FRSensorScript> ().downDist;
+		inAir = FL > hoverHeight + 0.5 && FR > hoverHeight + 0.5;
+	}
+	
 	void handleTurns() {
 		float t = Time.deltaTime;
 		float rollAmount = t * rollRateModifier;
@@ -276,15 +285,20 @@ public class CarPhysics : MonoBehaviour {
 			float rollAmount = t * rollRateModifier;
 
 			float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
-			transform.Rotate(new Vector3(0,rollAmount * (1/ left),0));
-			
+			float leftAngle = FLSensor.GetComponent<FLSensorScript>().leftAngle;
+			//transform.Rotate(new Vector3(0,rollAmount * (1/ left),0));
+			transform.Rotate(new Vector3(0,180 - leftAngle,0));
+			Debug.Log ("Player hit left wall!");
 			//vehicleModel.Rotate(new Vector3(0,0,rollAmount));
 		}
 
 		if (isTouchingRightWall()) {
 			float rollAmount = t * rollRateModifier;
 			float right = FRSensor.GetComponent<FRSensorScript>().rightDist;
-			transform.Rotate(new Vector3(0,-1 * rollAmount * (1/ right),0));
+			float rightAngle = FRSensor.GetComponent<FRSensorScript>().rightAngle;
+			//transform.Rotate(new Vector3(0,360 - rollAmount * (1/ right),0));
+			Debug.Log ("Player hit right wall!");
+			transform.Rotate(new Vector3(0,-1 * (180 - rightAngle),0));
 		}
 	}
 
@@ -303,33 +317,38 @@ public class CarPhysics : MonoBehaviour {
 				accel += 0.01f;
 			}
 		} else {
-			force += getUserForce ();
+			Rigidbody rb = GetComponent<Rigidbody>();
+			rb.AddForce(getUserForce() * velocityMagnificationFactor);
+			//force += getUserForce ();
 			handleTurns ();
 		}
-
+		/*
 		if (remainingBoostDuration > 0f) {
 			force += new Vector3(boostForce,0,0);
 			remainingBoostDuration -= Time.deltaTime;
 		} else if (Input.GetKeyDown ("space")) {
 			remainingBoostDuration = boostDuration;
-		}
+		}*/
 
 		//Gravity needs to be applied if it's not touching the ground
-		//velocity += new Vector3 (0, -9.8f * t, 0);
+		/*if (isInAir ()) {
+			velocity += new Vector3 (0, -9.8f * t, 0);
+		}*/
+		updateGround ();
 
-		velocity += t * (force / mass);
+		//velocity += t * (force / mass);
 
-		handleWallCollisions ();
+		//handleWallCollisions ();
 
 
 		if (!isAI) {
 			updateThrusters ();
 			setSpeedometer ();
 		}
-		transform.Translate (t * velocityMagnificationFactor * velocity);
+		//transform.Translate (t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
-		applyFoVSpeedEffect();
+		//applyFoVSpeedEffect();
 		//float stop = Time.realtimeSinceStartup;
 		//Debug.Log ("AHF execution time: " + (stop - start).ToString("0.00000000"));
 
