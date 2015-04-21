@@ -42,6 +42,7 @@ public class CarPhysics : MonoBehaviour {
 	public Collider track;
 	public GameObject course;
 	Transform[] checkpoints;
+	GameObject pauseMenu;
 	int lastCheckpoint;
 	int lap;
 
@@ -55,6 +56,8 @@ public class CarPhysics : MonoBehaviour {
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
+		pauseMenu = GameObject.Find ("PauseMenu");
+		pauseMenu.SetActive (false);
 
 		dim = 0.5f;
 		sensors = new Vector3[4];
@@ -222,8 +225,21 @@ public class CarPhysics : MonoBehaviour {
 		}
 	}
 
+	void handlePause() {
+		if (Input.GetKeyDown (KeyCode.Escape)) {
+			if (Time.timeScale == 0) {
+				Time.timeScale = 1;
+			} else {
+				Time.timeScale = 0;
+			}
+			pauseMenu.SetActive(Time.timeScale == 0);
+		}
+	}
+
 	void Update () {
 		float t = Time.deltaTime;
+
+		handlePause ();
 
 		Vector3 force = Vector3.zero;
 		//force += new Vector3 (0,-3,0);

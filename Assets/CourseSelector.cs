@@ -27,4 +27,7 @@ public class CourseSelector : MonoBehaviour {
 	public int getCourseSelection() {
 		return selection;
 	}
+	public void exitGame() {
+		Application.Quit ();
+	}
 }
