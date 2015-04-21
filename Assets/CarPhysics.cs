@@ -5,12 +5,10 @@ using System;
 
 public class CarPhysics : MonoBehaviour {
 
-	float mass = 1.0f;
 	float thrustForce = 450.0f;
 	float brakeForce = 1250.0f;
-	float dampingPerSec = 0.2f;
-	float hoverHeight = 0.05f;
-	float hoverForce = 40000.0f;
+	float hoverHeight = 3f;
+	float hoverForce = 40.0f;
 	float thrustSpeedCap = 1200.0f;
 	float brakeSpeedCap = -75.0f;
 	float turnRate = 45f;
@@ -20,7 +18,7 @@ public class CarPhysics : MonoBehaviour {
 	float maxAccel = 10.0f;
 
 	float dim;
-	float velocityMagnificationFactor = 0.02f;
+	float velocityMagnificationFactor = 0.002f;
 	float thrusterLifeTime = 0.04f;
 	float thrusterBaseLifeTime = 0.01f;
 	float thrusterParticleSize = 0.004f;
@@ -41,6 +39,7 @@ public class CarPhysics : MonoBehaviour {
 	Transform vehicleModel;
 	ParticleSystem[] thrusters;
 	Vector3[] sensors;
+	Rigidbody rb;
 
 	Transform[] checkpoints;
 	Transform nextCheckpoint;
@@ -99,6 +98,7 @@ public class CarPhysics : MonoBehaviour {
 		accel = 1.0f;
 
 		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
+		rb = GetComponent<Rigidbody>();
 
 		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
 
@@ -111,14 +111,14 @@ public class CarPhysics : MonoBehaviour {
 	}
 
 	void setSpeedometer() {
-		speedometer.text = ((int) velocity.x) + " KM/h";
+		speedometer.text = ((int) -rb.velocity.x) + " KM/h";
 	}
 
 	void updateThrusters() {
 		foreach (ParticleSystem ps in thrusters) {
 			ps.startLifetime = thrusterBaseLifeTime;
 			if (Input.GetKey("w")) {
-				ps.startLifetime += thrusterLifeTime * (velocity.x / thrustSpeedCap);
+				ps.startLifetime += thrusterLifeTime * (rb.velocity.x / thrustSpeedCap);
 			}
 			if (remainingBoostDuration > 0f) {
 				float effectFactor = Mathf.Pow(remainingBoostDuration / boostDuration, 2);
@@ -167,10 +167,10 @@ public class CarPhysics : MonoBehaviour {
 	Vector3 getUserForce () {
 		Vector3 force = Vector3.zero;
 		if (Input.GetKey ("w")) {
-			float proportionOfMax = (thrustSpeedCap - velocity.x) / thrustSpeedCap;
+			float proportionOfMax = (thrustSpeedCap - rb.velocity.x) / thrustSpeedCap;
 			float appliedThrust = thrustForce * proportionOfMax;
 			force += new Vector3(appliedThrust,0,0);
-		} else if (Input.GetKey ("s") && velocity.x > brakeSpeedCap) {
+		} else if (Input.GetKey ("s") && rb.velocity.x > brakeSpeedCap) {
 			force -= new Vector3(brakeForce,0,0);
 		} /*else if (velocity.x > 0){
 			force -= new Vector3(thrustForce * .4f,0,0);
@@ -200,60 +200,95 @@ public class CarPhysics : MonoBehaviour {
 		
 		Vector3 down = transform.TransformDirection(Vector3.down);
 		float[] sensorDistances = new float[4];
+		Vector3[] normals = new Vector3[4];
 		for (int i = 0; i < 4; i++) {
 			Ray myray = new Ray (transform.TransformPoint(sensors[i]), down);
 			RaycastHit hit;
-			if (track.Raycast (myray, out hit, 10f * hoverHeight)) {
+			if (track.Raycast (myray, out hit, 1000f * hoverHeight)) {
 				sensorDistances[i] = hit.distance;
+				normals[i] = hit.normal;
 			} else {
 				sensorDistances[i] = hoverHeight;
 			}
 		}
+		
+		Debug.Log (sensorDistances[0]+" | "+sensorDistances[1]+" | "+sensorDistances[2]+" | "+ sensorDistances[3]);
+		RaycastHit mainHit;
+		Ray mainRay = new Ray (transform.TransformPoint(new Vector3(0,.5f,0)), -transform.up);
+		Debug.DrawRay (mainRay.origin, 200*mainRay.direction);
+		track.Raycast (mainRay, out mainHit, 1000f * hoverHeight);
+		
+		rb.MovePosition (rb.position - (1f * (mainHit.normal * (mainHit.distance - hoverHeight))));
+		rb.MoveRotation (Quaternion.LookRotation(transform.forward, mainHit.normal));
+		Vector3 avgNormal = vector3Average (normals[0],normals[1],normals[2],normals[3]);
+		float avgDist = (sensorDistances[0]+sensorDistances[1]+sensorDistances[2]+sensorDistances[3])/4f;
+		//rb.MovePosition (transform.position + (avgNormal * avgDist));
+		Debug.Log ("x: " + avgNormal.x + ", y: " + avgNormal.y + ", z: " + avgNormal.z);
+		Debug.Log ("avgdist: " + avgDist + ", mainDist: " + mainHit.distance);
+		//rb.MoveRotation (Quaternion.LookRotation (transform.forward, avgNormal));
+		//rb.AddForce (Vector3.up * ((hoverHeight - avgDist)/hoverHeight)*.002f, ForceMode.VelocityChange);
 
-		//TODO: DRY this up
-		Vector3 frontPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[1]));
-		float heightDiff = ((sensorDistances [2] + sensorDistances [3]) / 2.0f) - (hoverHeight);
-		float rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (frontPoint, transform.TransformDirection(sensors[0] - sensors[1]), rotateAmount);
-		
-		Vector3 rearPoint = transform.TransformPoint(vector3Average(sensors[2],sensors[3]));
-		heightDiff = ((sensorDistances [0] + sensorDistances [1]) / 2.0f) - (hoverHeight);
-		rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (rearPoint, transform.TransformDirection(sensors[3] - sensors[2]), rotateAmount);
-		
-		Vector3 leftPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[2]));
-		heightDiff = ((sensorDistances [1] + sensorDistances [3]) / 2.0f) - (hoverHeight);
-		rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (leftPoint, transform.TransformDirection(sensors[3] - sensors[1]), rotateAmount);
-		
-		Vector3 rightPoint = transform.TransformPoint(vector3Average(sensors[1],sensors[3]));
-		heightDiff = ((sensorDistances [0] + sensorDistances [2]) / 2.0f) - (hoverHeight);
-		rotateAmount = t * hoverForce * heightDiff;
-		transform.RotateAround (rightPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
+//		//front, back, left, right
+//		int[,] sensorPairs = {{0,1}, {2,3}, {0,2}, {1,3}};
+//		hoverHeight = .06f;
+//		for (int i = 0; i < 4; i++) {
+//			Vector3 avgPoint = transform.TransformPoint(vector3Average(sensors[sensorPairs[i,0]],sensors[sensorPairs[i,1]]));
+//			float heightDiff = (((sensorDistances[sensorPairs[i,0]] + sensorDistances[sensorPairs[i,0]])
+//			                    / 2f) - hoverHeight)/hoverHeight;
+//			float rotateAmount = -heightDiff * .1f;
+//			//rb.AddForceAtPosition(new Vector3(0,rotateAmount,0), avgPoint, ForceMode.VelocityChange);
+//			//rb.AddForce(new Vector3(0,-.9f*rotateAmount,0));
+//			//Debug.Log("x: " + avgPoint.x + ", y: " + avgPoint.y + ", z: " + avgPoint.z + ", heightDiff: " + heightDiff);
+//		}
+
+//		//TODO: DRY this up
+//		Vector3 frontPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[1]));
+//		float heightDiff = ((sensorDistances [1] + sensorDistances [0]) / 2.0f) - (hoverHeight);
+//		float rotateAmount = t * hoverForce * heightDiff;
+//		rb.AddForceAtPosition(new Vector3(0,rotateAmount,0), frontPoint);
+//		//transform.RotateAround (frontPoint, transform.TransformDirection(sensors[0] - sensors[1]), rotateAmount);
+//		
+//		Vector3 rearPoint = transform.TransformPoint(vector3Average(sensors[2],sensors[3]));
+//		heightDiff = ((sensorDistances [2] + sensorDistances [3]) / 2.0f) - (hoverHeight);
+//		rotateAmount = t * hoverForce * heightDiff;
+//		rb.AddForceAtPosition(new Vector3(0,rotateAmount,0), rearPoint);
+//		//transform.RotateAround (rearPoint, transform.TransformDirection(sensors[3] - sensors[2]), rotateAmount);
+//		
+//		Vector3 leftPoint = transform.TransformPoint(vector3Average(sensors[0],sensors[2]));
+//		heightDiff = ((sensorDistances [0] + sensorDistances [2]) / 2.0f) - (hoverHeight);
+//		rotateAmount = t * hoverForce * heightDiff;
+//		rb.AddForceAtPosition(new Vector3(0,rotateAmount,0), leftPoint);
+//		//transform.RotateAround (leftPoint, transform.TransformDirection(sensors[3] - sensors[1]), rotateAmount);
+//		
+//		Vector3 rightPoint = transform.TransformPoint(vector3Average(sensors[1],sensors[3]));
+//		heightDiff = ((sensorDistances [1] + sensorDistances [3]) / 2.0f) - (hoverHeight);
+//		rotateAmount = t * hoverForce * heightDiff;
+//		rb.AddForceAtPosition(new Vector3(0,rotateAmount,0), rightPoint);
+//		//transform.RotateAround (rightPoint, transform.TransformDirection(sensors[0] - sensors[2]), rotateAmount);
 		
 	}
 
-	bool isTouchingRightWall() {
-		float right = FRSensor.GetComponent<FRSensorScript> ().rightDist;
-		return  right < 0.03;
-		//return 0.06 < 0.02;
-	}
+//	bool isTouchingRightWall() {
+//		float right = FRSensor.GetComponent<FRSensorScript> ().rightDist;
+//		return  right < 0.03;
+//		//return 0.06 < 0.02;
+//	}
 
-	//It might be a better idea to have the sensors as GameObjects, they all do different things now
-	bool isTouchingLeftWall() {
-		//TODO: make variable for this
-		//return FLSensor.leftDist < 0.02;
+//	//It might be a better idea to have the sensors as GameObjects, they all do different things now
+//	bool isTouchingLeftWall() {
+//		//TODO: make variable for this
+//		//return FLSensor.leftDist < 0.02;
+//
+//		float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
+//		//float front = FLSensor.GetComponent<FLSensorScript> ().frontDist;
+//		return left < 0.03;
+//	}
 
-		float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
-		//float front = FLSensor.GetComponent<FLSensorScript> ().frontDist;
-		return left < 0.03;
-	}
-
-	void updateGround() {
-		float FL = FLSensor.GetComponent<FLSensorScript>().downDist;
-		float FR = FRSensor.GetComponent<FRSensorScript> ().downDist;
-		inAir = FL > hoverHeight + 0.5 && FR > hoverHeight + 0.5;
-	}
+//	void updateGround() {
+//		float FL = FLSensor.GetComponent<FLSensorScript>().downDist;
+//		float FR = FRSensor.GetComponent<FRSensorScript> ().downDist;
+//		inAir = FL > hoverHeight + 0.5 && FR > hoverHeight + 0.5;
+//	}
 	
 	void handleTurns() {
 		float t = Time.deltaTime;
@@ -272,37 +307,37 @@ public class CarPhysics : MonoBehaviour {
 	}
 
 	void applyFoVSpeedEffect(){
-		if (velocity.x > fovSpeedThreshold) {
-			float v = velocity.x > fovSpeedMax ? fovSpeedMax : velocity.x;
+		if (rb.velocity.x > fovSpeedThreshold) {
+			float v = rb.velocity.x > fovSpeedMax ? fovSpeedMax : rb.velocity.x;
 			Camera.main.fieldOfView = fovDefault
 				+ (fovVariance* Mathf.Pow((v - fovSpeedThreshold) / (fovSpeedMax - fovSpeedThreshold), 2));
 		}
 	}
 
-	void handleWallCollisions() {
-		float t = Time.deltaTime;
-		if (isTouchingLeftWall()) {
-			float rollAmount = t * rollRateModifier;
+//	void handleWallCollisions() {
+//		float t = Time.deltaTime;
+//		if (isTouchingLeftWall()) {
+//			float rollAmount = t * rollRateModifier;
+//
+//			float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
+//			float leftAngle = FLSensor.GetComponent<FLSensorScript>().leftAngle;
+//			//transform.Rotate(new Vector3(0,rollAmount * (1/ left),0));
+//			transform.Rotate(new Vector3(0,180 - leftAngle,0));
+//			Debug.Log ("Player hit left wall!");
+//			//vehicleModel.Rotate(new Vector3(0,0,rollAmount));
+//		}
+//
+//		if (isTouchingRightWall()) {
+//			float rollAmount = t * rollRateModifier;
+//			float right = FRSensor.GetComponent<FRSensorScript>().rightDist;
+//			float rightAngle = FRSensor.GetComponent<FRSensorScript>().rightAngle;
+//			//transform.Rotate(new Vector3(0,360 - rollAmount * (1/ right),0));
+//			Debug.Log ("Player hit right wall!");
+//			transform.Rotate(new Vector3(0,-1 * (180 - rightAngle),0));
+//		}
+//	}
 
-			float left = FLSensor.GetComponent<FLSensorScript>().leftDist;
-			float leftAngle = FLSensor.GetComponent<FLSensorScript>().leftAngle;
-			//transform.Rotate(new Vector3(0,rollAmount * (1/ left),0));
-			transform.Rotate(new Vector3(0,180 - leftAngle,0));
-			Debug.Log ("Player hit left wall!");
-			//vehicleModel.Rotate(new Vector3(0,0,rollAmount));
-		}
-
-		if (isTouchingRightWall()) {
-			float rollAmount = t * rollRateModifier;
-			float right = FRSensor.GetComponent<FRSensorScript>().rightDist;
-			float rightAngle = FRSensor.GetComponent<FRSensorScript>().rightAngle;
-			//transform.Rotate(new Vector3(0,360 - rollAmount * (1/ right),0));
-			Debug.Log ("Player hit right wall!");
-			transform.Rotate(new Vector3(0,-1 * (180 - rightAngle),0));
-		}
-	}
-
-	void Update () {
+	void FixedUpdate () {
 		float t = Time.deltaTime;
 
 		Vector3 force = Vector3.zero;
@@ -317,8 +352,7 @@ public class CarPhysics : MonoBehaviour {
 				accel += 0.01f;
 			}
 		} else {
-			Rigidbody rb = GetComponent<Rigidbody>();
-			rb.AddForce(getUserForce() * velocityMagnificationFactor);
+			rb.AddForce(-getUserForce() / velocityMagnificationFactor);
 			//force += getUserForce ();
 			handleTurns ();
 		}
@@ -334,7 +368,7 @@ public class CarPhysics : MonoBehaviour {
 		/*if (isInAir ()) {
 			velocity += new Vector3 (0, -9.8f * t, 0);
 		}*/
-		updateGround ();
+		//updateGround ();
 
 		//velocity += t * (force / mass);
 
