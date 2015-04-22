@@ -163,9 +163,6 @@ public class CarPhysics : MonoBehaviour {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
-						if (i == 1 && !isAI) {
-							Application.LoadLevelAdditive ("finish");
-						}
 						lastCheckpoint = i;
 						nextCheckpoint = getNextCheckpoint (i);
 						if (i == checkpoints.Length - 1) {
