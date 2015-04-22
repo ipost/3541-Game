@@ -49,9 +49,12 @@ public class CarPhysics : MonoBehaviour {
 	int lastCheckpoint;
 	int lap;
 	float accel;
+	int place = 1;
+	GameObject[] aiVehicles;
 
 	Text lapDisplay;
 	Text speedometer;
+	Text placeDisplay;
 
 	void Start () {
 		Transform spawn = TrackScript.getSpawn ();
@@ -69,7 +72,6 @@ public class CarPhysics : MonoBehaviour {
 		sensors[3] = new Vector3(-dim, -dim, -dim);
 
 		lap = 1;
-		//Debug.Log ("Lap " + lap);
 		lapDisplay = GameObject.Find ("LapDisplay").GetComponent<Text>();
 		setLapDisplay ();
 		lastCheckpoint = -1;
@@ -84,8 +86,13 @@ public class CarPhysics : MonoBehaviour {
 				}
 			}
 		}
+		lastCheckpoint = checkpoints.Length - 1;
 		nextCheckpoint = checkpoints [0];
 		accel = 1.0f;
+
+		aiVehicles = GameObject.FindGameObjectsWithTag ("AI");
+		placeDisplay = GameObject.Find ("PlaceDisplay").GetComponent<Text>();
+		setPlaceDisplay ();
 
 		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
 
@@ -118,6 +125,31 @@ public class CarPhysics : MonoBehaviour {
 		}
 	}
 
+	int getPlace() {
+		int numAhead = 0;
+		for (int i = 0; i < aiVehicles.Length; i++) {
+			GameObject aiVehicle = aiVehicles[i];
+			CarPhysics script = aiVehicle.GetComponent<CarPhysics>();
+			int aiLap = script.lap;
+			int aiLastCheckpoint = script.lastCheckpoint;
+			Transform aiNextCheckpoint = script.nextCheckpoint;
+			float distance = (nextCheckpoint.position - transform.position).magnitude;
+			float aiDistance = (aiNextCheckpoint.position - aiVehicle.transform.position).magnitude;
+			bool isAhead = false;
+			isAhead |= (aiLap > lap);
+			isAhead |= (aiLap == lap && aiLastCheckpoint > lastCheckpoint);
+			isAhead |= (aiLap == lap && aiLastCheckpoint == lastCheckpoint && aiDistance < distance);
+			if (isAhead) {
+				numAhead++;
+			}
+		}
+		return numAhead + 1;
+	}
+	
+	void setPlaceDisplay() {
+		placeDisplay.text = "Place: " + place + " / " + (aiVehicles.Length + 1);
+	}
+
 	Transform getNextCheckpoint (int i) {
 		int next = i + 1;
 		if (next == checkpoints.Length) {
@@ -131,21 +163,19 @@ public class CarPhysics : MonoBehaviour {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
+						if (i == 1 && !isAI) {
+							Application.LoadLevelAdditive ("finish");
+						}
 						lastCheckpoint = i;
 						nextCheckpoint = getNextCheckpoint (i);
-						if (isAI) {
-							Debug.Log ("AI hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
-						} else {
-							Debug.Log ("You hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
-						}
 						if (i == checkpoints.Length - 1) {
 							lap++;
-							if (isAI) {
-								Debug.Log ("AI finished a lap");
-							} else {
-								Debug.Log ("You finished a lap");
+							if (!isAI) {
+								setLapDisplay();
+								if (lap > 3) {
+									Application.LoadLevelAdditive ("finish");
+								}
 							}
-							setLapDisplay();
 						}
 					}
 				}
@@ -256,7 +286,7 @@ public class CarPhysics : MonoBehaviour {
 			transform.position = target;
 			Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
 			Quaternion rotation = Quaternion.LookRotation (direction);
-			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, t);
+			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, accel * t);
 			if (accel < maxAccel) {
 				accel += 0.01f;
 			}
@@ -277,6 +307,8 @@ public class CarPhysics : MonoBehaviour {
 		if (!isAI) {
 			updateThrusters ();
 			setSpeedometer ();
+			place = getPlace ();
+			setPlaceDisplay ();
 		}
 		transform.Translate (t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
