@@ -6,6 +6,7 @@ public class TrackScript : MonoBehaviour {
 	
 	private string[] courseNames = {"Figure 8", "Another Course"};
 	private static Queue<Transform> spawns;
+	private int numAI = 2;
 
 	// Use this for initialization
 	void Start () {
@@ -13,7 +14,9 @@ public class TrackScript : MonoBehaviour {
 		string courseName = courseNames [selection].Replace (" ", "");
 
 		Application.LoadLevelAdditive ("playerVehicle");
-		Application.LoadLevelAdditive ("aiVehicle");
+		for (int i = 0; i < numAI; i++) {
+			Application.LoadLevelAdditive ("aiVehicle");
+		}
 		Application.LoadLevelAdditive ("HUD");
 
 		//queue up spawns for the vehicles to fetch

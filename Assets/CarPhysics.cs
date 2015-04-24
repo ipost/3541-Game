@@ -51,6 +51,7 @@ public class CarPhysics : MonoBehaviour {
 	float accel;
 	int place = 1;
 	GameObject[] aiVehicles;
+	System.Random rand = new System.Random();
 
 	Text lapDisplay;
 	Text speedometer;
@@ -89,6 +90,9 @@ public class CarPhysics : MonoBehaviour {
 		lastCheckpoint = checkpoints.Length - 1;
 		nextCheckpoint = checkpoints [0];
 		accel = 1.0f;
+		int maxAccelDiff = rand.Next (-2, 1);
+		maxAccel += (float) maxAccelDiff;
+		Debug.Log (maxAccel);
 
 		aiVehicles = GameObject.FindGameObjectsWithTag ("AI");
 		placeDisplay = GameObject.Find ("PlaceDisplay").GetComponent<Text>();
@@ -284,8 +288,13 @@ public class CarPhysics : MonoBehaviour {
 			Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
 			Quaternion rotation = Quaternion.LookRotation (direction);
 			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, accel * t);
-			if (accel < maxAccel) {
-				accel += 0.01f;
+			double d = rand.NextDouble ();
+			if (d < 0.99) {
+				if (accel < maxAccel) {
+					accel += 0.01f;
+				}
+			} else {
+				accel -= 0.05f;
 			}
 		} else {
 			force += getUserForce ();
