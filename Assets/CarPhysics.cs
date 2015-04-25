@@ -286,8 +286,10 @@ public class CarPhysics : MonoBehaviour {
 			Vector3 target = Vector3.MoveTowards (transform.position, nextCheckpoint.position, accel * t);
 			transform.position = target;
 			Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
-			Quaternion rotation = Quaternion.LookRotation (direction);
-			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, accel * t);
+			Quaternion look = Quaternion.LookRotation (direction);
+			Quaternion adjust = Quaternion.AngleAxis (-90, transform.up);
+			Quaternion rotation = adjust * look;
+			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, 0.5f);
 			double d = rand.NextDouble ();
 			if (d < 0.99) {
 				if (accel < maxAccel) {
