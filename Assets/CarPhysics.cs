@@ -37,6 +37,7 @@ public class CarPhysics : MonoBehaviour {
 	Vector3 velocity;
 
 	Transform vehicleModel;
+	AudioSource engineSound;
 	ParticleSystem[] thrusters;
 	Vector3[] sensors;
 	public Collider track;
@@ -58,6 +59,8 @@ public class CarPhysics : MonoBehaviour {
 		track = GameObject.Find ("course").GetComponent<Collider> ();
 		pauseMenu = GameObject.Find ("PauseMenu");
 		pauseMenu.SetActive (false);
+		engineSound = GetComponent<AudioSource> ();
+		engineSound.mute = true;
 
 		dim = 0.5f;
 		sensors = new Vector3[4];
@@ -133,8 +136,10 @@ public class CarPhysics : MonoBehaviour {
 	}
 
 	Vector3 getUserForce () {
+		//engineSound.mute = true;
 		Vector3 force = Vector3.zero;
 		if (Input.GetKey ("w")) {
+			engineSound.mute = false;
 			float proportionOfMax = (thrustSpeedCap - velocity.x) / thrustSpeedCap;
 			float appliedThrust = thrustForce * proportionOfMax;
 			force += new Vector3(appliedThrust,0,0);
@@ -254,10 +259,12 @@ public class CarPhysics : MonoBehaviour {
 		}
 
 		velocity += t * (force / mass);
+		engineSound.pitch = velocity.x/210f;
 
 		updateThrusters ();
 		setSpeedometer ();
-		transform.Translate (t * velocityMagnificationFactor * velocity);
+		//transform.Translate (t * velocityMagnificationFactor * velocity);
+		transform.position = transform.position + transform.TransformVector (20f * t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
 		applyFoVSpeedEffect();
