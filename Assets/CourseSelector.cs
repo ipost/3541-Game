@@ -7,7 +7,7 @@ public class CourseSelector : MonoBehaviour {
 	private int selection = 0;
 
 	//TODO: figure out where this info should go
-	private string[] courseNames = {"Figure 8", "Another Course"};
+	private string[] courseNames = {"Figure 8", "Cyclone"};
 	private int levelCount = 2;
 
 	Text courseNameDisplay;
