@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System;
 
 public class CarPhysics : MonoBehaviour {
 
@@ -16,6 +17,7 @@ public class CarPhysics : MonoBehaviour {
 	float boostDuration = 1.5f;
 	float boostForce = 300f;
 	float remainingBoostDuration = 0.0f;
+	float maxAccel = 10.0f;
 
 	float dim;
 	float velocityMagnificationFactor = 0.02f;
@@ -42,13 +44,20 @@ public class CarPhysics : MonoBehaviour {
 	Vector3[] sensors;
 	public Collider track;
 	public GameObject course;
+	public bool isAI;
 	Transform[] checkpoints;
 	GameObject pauseMenu;
+	Transform nextCheckpoint;
 	int lastCheckpoint;
 	int lap;
+	float accel;
+	int place = 1;
+	GameObject[] aiVehicles;
+	System.Random rand = new System.Random();
 
 	Text lapDisplay;
 	Text speedometer;
+	Text placeDisplay;
 
 	void Start () {
 		Transform spawn = TrackScript.getSpawn ();
@@ -70,7 +79,6 @@ public class CarPhysics : MonoBehaviour {
 		sensors[3] = new Vector3(-dim, -dim, -dim);
 
 		lap = 1;
-		Debug.Log ("Lap " + lap);
 		lapDisplay = GameObject.Find ("LapDisplay").GetComponent<Text>();
 		setLapDisplay ();
 		lastCheckpoint = -1;
@@ -85,6 +93,16 @@ public class CarPhysics : MonoBehaviour {
 				}
 			}
 		}
+		lastCheckpoint = checkpoints.Length - 1;
+		nextCheckpoint = checkpoints [0];
+		accel = 1.0f;
+		int maxAccelDiff = rand.Next (-2, 1);
+		maxAccel += (float) maxAccelDiff;
+		Debug.Log (maxAccel);
+
+		aiVehicles = GameObject.FindGameObjectsWithTag ("AI");
+		placeDisplay = GameObject.Find ("PlaceDisplay").GetComponent<Text>();
+		setPlaceDisplay ();
 
 		speedometer = GameObject.Find ("Speedometer").GetComponent<Text>();
 
@@ -117,18 +135,55 @@ public class CarPhysics : MonoBehaviour {
 		}
 	}
 
+	int getPlace() {
+		int numAhead = 0;
+		for (int i = 0; i < aiVehicles.Length; i++) {
+			GameObject aiVehicle = aiVehicles[i];
+			CarPhysics script = aiVehicle.GetComponent<CarPhysics>();
+			int aiLap = script.lap;
+			int aiLastCheckpoint = script.lastCheckpoint;
+			Transform aiNextCheckpoint = script.nextCheckpoint;
+			float distance = (nextCheckpoint.position - transform.position).magnitude;
+			float aiDistance = (aiNextCheckpoint.position - aiVehicle.transform.position).magnitude;
+			bool isAhead = false;
+			isAhead |= (aiLap > lap);
+			isAhead |= (aiLap == lap && aiLastCheckpoint > lastCheckpoint);
+			isAhead |= (aiLap == lap && aiLastCheckpoint == lastCheckpoint && aiDistance < distance);
+			if (isAhead) {
+				numAhead++;
+			}
+		}
+		return numAhead + 1;
+	}
+	
+	void setPlaceDisplay() {
+		placeDisplay.text = "Place: " + place + " / " + (aiVehicles.Length + 1);
+	}
+
+	Transform getNextCheckpoint (int i) {
+		int next = i + 1;
+		if (next == checkpoints.Length) {
+			next = 0;
+		}
+		return checkpoints [next];
+	}
+
 	void OnTriggerEnter(Collider col) {
-		if (col.gameObject.name == "checkpoint") {
+		if (col.gameObject.name.Equals ("checkpoint")) {
 			for (int i = 0; i < checkpoints.Length; i++) {
 				if (checkpoints[i] == col.gameObject.transform) {
-					Debug.Log ("Hit checkpoint " + (i + 1) + " of " + checkpoints.Length);
 					if (lastCheckpoint == i - 1 || (lastCheckpoint == checkpoints.Length - 1 && i == 0)) {
 						lastCheckpoint = i;
-					}
-					if (i == checkpoints.Length - 1) {
-						lap++;
-						setLapDisplay();
-						Debug.Log ("Lap " + lap);
+						nextCheckpoint = getNextCheckpoint (i);
+						if (i == checkpoints.Length - 1) {
+							lap++;
+							if (!isAI) {
+								setLapDisplay();
+								if (lap > 3) {
+									Application.LoadLevelAdditive ("finish");
+								}
+							}
+						}
 					}
 				}
 			}
@@ -248,8 +303,26 @@ public class CarPhysics : MonoBehaviour {
 
 		Vector3 force = Vector3.zero;
 		//force += new Vector3 (0,-3,0);
-		force += getUserForce ();
-		handleTurns ();
+		if (isAI) {
+			Vector3 target = Vector3.MoveTowards (transform.position, nextCheckpoint.position, accel * t);
+			transform.position = target;
+			Vector3 direction = (nextCheckpoint.position - transform.position).normalized;
+			Quaternion look = Quaternion.LookRotation (direction);
+			Quaternion adjust = Quaternion.AngleAxis (-90, transform.up);
+			Quaternion rotation = adjust * look;
+			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, 0.5f);
+			double d = rand.NextDouble ();
+			if (d < 0.99) {
+				if (accel < maxAccel) {
+					accel += 0.01f;
+				}
+			} else {
+				accel -= 0.05f;
+			}
+		} else {
+			force += getUserForce ();
+			handleTurns ();
+		}
 
 		if (remainingBoostDuration > 0f) {
 			force += new Vector3(boostForce,0,0);
@@ -257,13 +330,18 @@ public class CarPhysics : MonoBehaviour {
 		} else if (Input.GetKeyDown ("space")) {
 			remainingBoostDuration = boostDuration;
 		}
-
+		
 		velocity += t * (force / mass);
 		engineSound.pitch = velocity.x/210f;
 
-		updateThrusters ();
-		setSpeedometer ();
-		//transform.Translate (t * velocityMagnificationFactor * velocity);
+		if (!isAI) {
+			updateThrusters ();
+			setSpeedometer ();
+			place = getPlace ();
+			setPlaceDisplay ();
+		}
+
+//		transform.Translate (t * velocityMagnificationFactor * velocity);
 		transform.position = transform.position + transform.TransformVector (20f * t * velocityMagnificationFactor * velocity);
 		//float start = Time.realtimeSinceStartup;
 		applyHoverForce ();
