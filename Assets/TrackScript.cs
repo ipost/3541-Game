@@ -19,12 +19,12 @@ public class TrackScript : MonoBehaviour {
 			spawns.Enqueue (t.transform);
 
 		numAI = spawns.Count - 1;
-
+		
+		Application.LoadLevelAdditive ("HUD");
 		Application.LoadLevelAdditive ("playerVehicle");
 		for (int i = 0; i < numAI; i++) {
 			Application.LoadLevelAdditive ("aiVehicle");
 		}
-		Application.LoadLevelAdditive ("HUD");
 	}
 
 	public static Transform getSpawn() {

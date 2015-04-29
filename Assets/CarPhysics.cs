@@ -66,10 +66,12 @@ public class CarPhysics : MonoBehaviour {
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
-		pauseMenu = GameObject.Find ("PauseMenu");
-		pauseMenu.SetActive (false);
-		engineSound = GetComponent<AudioSource> ();
-		engineSound.mute = true;
+		if (!isAI) {
+			pauseMenu = GameObject.Find ("PauseMenu");
+			pauseMenu.SetActive (false);
+			engineSound = GetComponent<AudioSource> ();
+			engineSound.mute = true;
+		}
 
 		dim = 0.5f;
 		sensors = new Vector3[4];
@@ -98,7 +100,6 @@ public class CarPhysics : MonoBehaviour {
 		accel = 1.0f;
 		int maxAccelDiff = rand.Next (-2, 1);
 		maxAccel += (float) maxAccelDiff;
-		Debug.Log (maxAccel);
 
 		aiVehicles = GameObject.FindGameObjectsWithTag ("AI");
 		placeDisplay = GameObject.Find ("PlaceDisplay").GetComponent<Text>();
@@ -194,7 +195,9 @@ public class CarPhysics : MonoBehaviour {
 		//engineSound.mute = true;
 		Vector3 force = Vector3.zero;
 		if (Input.GetKey ("w")) {
-			engineSound.mute = false;
+			if (!isAI) {
+				engineSound.mute = false;
+			}
 			float proportionOfMax = (thrustSpeedCap - velocity.x) / thrustSpeedCap;
 			float appliedThrust = thrustForce * proportionOfMax;
 			force += new Vector3(appliedThrust,0,0);
@@ -292,7 +295,9 @@ public class CarPhysics : MonoBehaviour {
 			} else {
 				Time.timeScale = 0;
 			}
-			pauseMenu.SetActive(Time.timeScale == 0);
+			if (!isAI) {
+				pauseMenu.SetActive(Time.timeScale == 0);
+			}
 		}
 	}
 
@@ -332,9 +337,9 @@ public class CarPhysics : MonoBehaviour {
 		}
 		
 		velocity += t * (force / mass);
-		engineSound.pitch = velocity.x/210f;
 
 		if (!isAI) {
+			engineSound.pitch = velocity.x / 210f;
 			updateThrusters ();
 			setSpeedometer ();
 			place = getPlace ();
