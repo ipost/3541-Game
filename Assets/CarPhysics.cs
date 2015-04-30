@@ -63,6 +63,7 @@ public class CarPhysics : MonoBehaviour {
 		Transform spawn = TrackScript.getSpawn ();
 		transform.position = spawn.position;
 		transform.rotation = spawn.rotation;
+		QualitySettings.antiAliasing = 8;
 
 		velocity = Vector3.zero;
 		track = GameObject.Find ("course").GetComponent<Collider> ();
@@ -95,6 +96,7 @@ public class CarPhysics : MonoBehaviour {
 				}
 			}
 		}
+		currentLapTime = 0f;
 		lastCheckpoint = checkpoints.Length - 1;
 		nextCheckpoint = checkpoints [0];
 		accel = 1.0f;
@@ -112,6 +114,8 @@ public class CarPhysics : MonoBehaviour {
 		vehicleModel = transform.FindChild ("VehicleModel").transform;
 		fovVariance = fovMax - fovDefault;
 	}
+
+	float currentLapTime;
 
 	void setLapDisplay() {
 		lapDisplay.text = "Lap " + lap + " / 3";
@@ -156,6 +160,12 @@ public class CarPhysics : MonoBehaviour {
 		}
 		return numAhead + 1;
 	}
+
+	void updateHUDTimers() {
+		currentLapTime += Time.deltaTime;
+		GameObject.Find ("Lap" + lap + "Time").GetComponent<Text> ().text =
+			string.Format("Lap {0}: {1}", lap, currentLapTime.ToString("000.00"));
+	}
 	
 	void setPlaceDisplay() {
 		placeDisplay.text = "Place: " + place + " / " + (aiVehicles.Length + 1);
@@ -178,6 +188,7 @@ public class CarPhysics : MonoBehaviour {
 						nextCheckpoint = getNextCheckpoint (i);
 						if (i == checkpoints.Length - 1) {
 							lap++;
+							currentLapTime = 0f;
 							if (!isAI) {
 								setLapDisplay();
 								if (lap > 3) {
@@ -325,6 +336,7 @@ public class CarPhysics : MonoBehaviour {
 				accel -= 0.05f;
 			}
 		} else {
+			updateHUDTimers();
 			force += getUserForce ();
 			handleTurns ();
 		}
