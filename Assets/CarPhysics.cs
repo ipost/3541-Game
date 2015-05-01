@@ -178,8 +178,9 @@ public class CarPhysics : MonoBehaviour {
 
 	void updateHUDTimers() {
 		currentLapTime += Time.deltaTime;
-		GameObject.Find ("Lap" + lap + "Time").GetComponent<Text> ().text =
-			string.Format("Lap {0}: {1}", lap, currentLapTime.ToString("000.00"));
+		if (lap <= 3)
+			GameObject.Find ("Lap" + lap + "Time").GetComponent<Text> ().text =
+				string.Format("Lap {0}: {1}", lap, currentLapTime.ToString("000.00"));
 	}
 	
 	void setPlaceDisplay() {
