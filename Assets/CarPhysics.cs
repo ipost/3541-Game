@@ -333,6 +333,9 @@ public class CarPhysics : MonoBehaviour {
 	}
 
 	void Update () {
+		if (Input.GetKeyDown("p")) {
+			Application.CaptureScreenshot(DateTime.Now.ToString("HH-mm-fffff") + ".png");
+		}
 		float t = Time.deltaTime;
 
 		handlePause ();
