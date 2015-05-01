@@ -18,8 +18,9 @@ public class TrackScript : MonoBehaviour {
 		foreach (Transform t in GameObject.Find ("VehicleSpawns").transform)
 			spawns.Enqueue (t.transform);
 
-//		numAI = spawns.Count - 1;
-		numAI = PlayerPrefs.GetInt ("numAI");
+		numAI = spawns.Count - 1;
+//		numAI = PlayerPrefs.GetInt ("numAI");
+		numAI = 3;
 		
 		Application.LoadLevelAdditive ("HUD");
 		Application.LoadLevelAdditive ("playerVehicle");

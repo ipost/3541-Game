@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 using System;
 
 public class CarPhysics : MonoBehaviour {
@@ -54,6 +55,7 @@ public class CarPhysics : MonoBehaviour {
 	int place = 1;
 	GameObject[] aiVehicles;
 	System.Random rand = new System.Random();
+	HashSet<int> missed = new HashSet<int> ();
 
 	Text lapDisplay;
 	Text speedometer;
@@ -98,8 +100,9 @@ public class CarPhysics : MonoBehaviour {
 		lastCheckpoint = checkpoints.Length - 1;
 		nextCheckpoint = checkpoints [0];
 		accel = 1.0f;
-		int maxAccelDiff = rand.Next (-2, 1);
+		int maxAccelDiff = rand.Next (-2, 0);
 		maxAccel += (float) maxAccelDiff;
+//		maxAccel = 9.0f;
 
 		aiVehicles = GameObject.FindGameObjectsWithTag ("AI");
 		placeDisplay = GameObject.Find ("PlaceDisplay").GetComponent<Text>();
@@ -237,6 +240,10 @@ public class CarPhysics : MonoBehaviour {
 			if (track.Raycast (myray, out hit, 10f * hoverHeight)) {
 				sensorDistances[i] = hit.distance;
 			} else {
+				if (!missed.Contains (lastCheckpoint) && lastCheckpoint != checkpoints.Length - 1) {
+					missed.Add (lastCheckpoint);
+//					Debug.Log (lastCheckpoint);
+				}
 				sensorDistances[i] = hoverHeight;
 			}
 		}
@@ -315,7 +322,7 @@ public class CarPhysics : MonoBehaviour {
 			Quaternion look = Quaternion.LookRotation (direction);
 			Quaternion adjust = Quaternion.AngleAxis (-90, transform.up);
 			Quaternion rotation = adjust * look;
-			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, 0.5f);
+			transform.rotation = Quaternion.Slerp (transform.rotation, rotation, accel * t);
 			double d = rand.NextDouble ();
 			if (d < 0.99) {
 				if (accel < maxAccel) {
