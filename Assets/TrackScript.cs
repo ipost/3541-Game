@@ -20,7 +20,6 @@ public class TrackScript : MonoBehaviour {
 
 		numAI = spawns.Count - 1;
 //		numAI = PlayerPrefs.GetInt ("numAI");
-		numAI = 3;
 		
 		Application.LoadLevelAdditive ("HUD");
 		Application.LoadLevelAdditive ("playerVehicle");
