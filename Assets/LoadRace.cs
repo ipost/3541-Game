@@ -9,6 +9,8 @@ public class LoadRace : MonoBehaviour {
 		PlayerPrefs.SetInt ("numAI", (int)slider.value);
 		CourseSelector cs = GameObject.Find ("CourseSelectPanel").GetComponent<CourseSelector>();
 		PlayerPrefs.SetInt ("courseSelection", cs.getCourseSelection());
+		VehicleSelector vs = GameObject.Find ("VehicleSelectPanel").GetComponent<VehicleSelector>();
+		PlayerPrefs.SetString ("vehicleSelection", vs.getVehicleSelection ());
 		Application.LoadLevel (courseNames[cs.getCourseSelection()].Replace(" ",""));
 	}
 }

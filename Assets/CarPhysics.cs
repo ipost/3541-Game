@@ -61,10 +61,22 @@ public class CarPhysics : MonoBehaviour {
 	Text speedometer;
 	Text placeDisplay;
 
+	public String vehicleName = "Orion";
+	string[] vehicleNames = {"Orion", "Wraith"};
+
 	void Start () {
 		Transform spawn = TrackScript.getSpawn ();
 		transform.position = spawn.position;
 		transform.rotation = spawn.rotation;
+		if (!isAI) {
+			vehicleName = PlayerPrefs.GetString ("vehicleSelection");
+		} else {
+			vehicleName = vehicleNames[UnityEngine.Random.Range(0, vehicleNames.Length)];
+		}
+		foreach (Transform t in transform.Find("ModelList")) {
+			if (t.gameObject.name != vehicleName)
+				t.gameObject.SetActive(false);
+		}
 		QualitySettings.antiAliasing = 8;
 
 		velocity = Vector3.zero;
@@ -114,7 +126,7 @@ public class CarPhysics : MonoBehaviour {
 
 		thrusters = transform.GetComponentsInChildren<ParticleSystem>();
 
-		vehicleModel = transform.FindChild ("VehicleModel").transform;
+		vehicleModel = transform.Find ("ModelList/"+vehicleName).transform;
 		fovVariance = fovMax - fovDefault;
 	}
 
